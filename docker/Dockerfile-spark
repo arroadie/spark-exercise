@@ -1,0 +1,20 @@
+FROM archlinux/base
+
+RUN pacman --noconfirm -Syyy && pacman --noconfirm -Syu && pacman --noconfirm -S sudo git base-devel inetutils procps
+
+RUN sed -i "s/# %wheel ALL=(ALL) NOPASSWD: ALL/%wheel ALL=(ALL) NOPASSWD: ALL/g" /etc/sudoers
+RUN groupadd -r sparkuser && useradd --no-log-init -r -g sparkuser sparkuser
+RUN usermod -aG wheel sparkuser
+RUN mkdir /home/sparkuser && chown sparkuser:sparkuser /home/sparkuser
+USER sparkuser
+
+RUN git clone https://github.com/ryukinix/apache-spark-pkgbuild.git /home/sparkuser/spark/
+WORKDIR /home/sparkuser/spark
+RUN makepkg --noconfirm --noprogressbar -si
+RUN mkdir source && tar -xzvf spark-3.0.0-preview2-bin-hadoop2.7.tgz --directory source
+
+ADD https://github.com/krallin/tini/releases/download/v0.19.0/tini-static /tini
+RUN chmod +x /tini
+RUN /home/sparkuser/spark/source/spark-3.0.0-preview2-bin-hadoop2.7/sbin/start-master.sh
+
+CMD ["/tini", "/entrypoint.sh", "master"]

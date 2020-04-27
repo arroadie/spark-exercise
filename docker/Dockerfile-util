@@ -1,0 +1,5 @@
+FROM archlinux/base
+
+RUN pacman --noconfirm -Syyy && pacman --noconfirm -Syu && pacman --noconfirm -S sudo git base-devel inetutils procps
+
+CMD ['/bin/bash']

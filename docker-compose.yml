@@ -1,0 +1,60 @@
+version: "3.8"
+services:
+  spark-master:
+    container_name: sparkmaster
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile-spark
+    environment:
+      - SPARK_MASTER_HOST=0.0.0.0
+      - SPARK_MASTER_WEBUI_PORT=8080
+      - SPARK_MASTER_PORT=7077
+      - SPARK_WORKER_WEBUI_PORT=8081
+      - SPARK_HOME=/home/sparkuser/spark/source/spark-3.0.0-preview2-bin-hadoop2.7/
+    volumes:
+    - "./stockaverage:/stockaverage"
+    - "./scripts/entrypoint-master.sh:/entrypoint.sh"
+    networks:
+      - spark-network
+    ports:
+      - "7077:7077"
+      - "8080:8080"
+  spark-worker:
+    depends_on:
+      - spark-master
+    container_name: sparkworker
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile-spark
+    environment:
+      - SPARK_HOME=/home/sparkuser/spark/source/spark-3.0.0-preview2-bin-hadoop2.7/
+    volumes:
+      - "./stockaverage:/stockaverage"
+      - "./scripts/entrypoint-worker.sh:/entrypoint.sh"
+    networks:
+      - spark-network
+    ports:
+      - "8081:8081"
+      - "4040:4040"
+  postgres:
+    container_name: postgres
+    image: postgres:12-alpine
+    ports:
+      - "5432:5432"
+    volumes:
+      - "./scripts/table_creation.sql:/docker-entrypoint-initdb.d/table_creation.sql"
+      - "./stock_prices.csv:/stock_prices.csv"
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    networks:
+      - spark-network
+  util:
+    container_name: util
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile-util
+    networks:
+      - spark-network
+networks:
+  spark-network:
+    name: sparknetwork
